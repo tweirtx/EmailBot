@@ -1,0 +1,17 @@
+{
+  "token": "",
+  "postgres_info": {
+    "host": "127.0.0.1",
+    "port": 5432,
+    "user": "emailbot",
+    "database": "emailbot",
+    "password": "somethingclever"
+  },
+  "email_info": {
+    "host": "smtp.gmail.com",
+    "auth": {
+      "user": "example@gmail.com",
+      "pass": "example123"
+    }
+  }
+}

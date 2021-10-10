@@ -1,0 +1,31 @@
+{
+  "name": "emailbot",
+  "version": "1.0.0",
+  "description": "A Discord bot that allows you to verify an individual's status at a chosen university or other organization via email.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsc main.ts && node main.js",
+    "setup": "npm install && tsc setup.ts && node main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tweirtx/EmailBot.git"
+  },
+  "author": "Travis Weir",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/tweirtx/EmailBot/issues"
+  },
+  "homepage": "https://github.com/tweirtx/EmailBot#readme",
+  "dependencies": {
+    "@types/node": "^16.10.3",
+    "@types/nodemailer": "^6.4.4",
+    "@types/nodemailer-direct-transport": "^1.0.32",
+    "@types/nodemailer-smtp-transport": "^2.7.5",
+    "discord.js": "^13.2.0",
+    "nodemailer": "^6.6.5",
+    "ts-postgres": "^1.1.3",
+    "typescript": "^4.4.3"
+  }
+}
