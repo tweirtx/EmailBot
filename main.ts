@@ -1,7 +1,14 @@
 import * as discord from 'discord.js';
 import { Client } from 'ts-postgres';
 import * as email from "nodemailer";
-const config = require("./config.json");
+let config;
+try {
+    config = require("./config.json");
+}
+catch (Exception) {
+    console.log("Configuration file not found. Please run npm setup to continue.");
+    process.exit(1);
+}
 
 async function sendVerifEmail(addr, randomCode) {
     var transporter = email.createTransport(config.email_info);
@@ -25,7 +32,6 @@ async function main() {
     const postgres = new Client(config.postgres_info);
     await postgres.connect();
     const discordClient = new discord.Client({intents: [discord.Intents.FLAGS.GUILDS]});
-
     try {
         // Querying the client returns a query result promise
         // which is also an asynchronous result iterator.
