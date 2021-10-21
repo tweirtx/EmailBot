@@ -12,7 +12,7 @@ and run the following commands for an example config:
 CREATE DATABASE emailbot;
 CREATE USER emailbot PASSWORD 'somethingclever';
 ```
-4. Run `npm setup` in the EmailBot directory. You will be interactively asked for configuration details,
+4. Run `npm setup` in the EmailBot directory. You will need to fill out the generated configuration file,
 then some statements to configure the database will be run.
 
 Explanation of configuration elements: 
