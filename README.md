@@ -3,6 +3,11 @@ A Discord bot that allows you to verify an individual's status at a chosen unive
 
 Currently very WIP but it's a project for me to start messing around with TypeScript a bit
 
+# Setup Guide (docker)
+1. Install Docker with docker-compose and Git. This process varies by operating system, and is out of scope for this document.
+2. `git clone https://github.com/tweirtx/EmailBot` and `cd EmailBot`
+3. `docker-compose up -d`
+
 # Setup Guide (manual)
 1. Install PostgreSQL, git, and node.js with npm. This procedure varies by OS, and is out of scope for this document.
 2. Run `git clone https://github.com/tweirtx/EmailBot` followed by `cd EmailBot`.
