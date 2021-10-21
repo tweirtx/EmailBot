@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "tsc main.ts && node main.js",
-    "setup": "npm install && tsc setup.ts && node setup.js"
+    "setup": "npm install && tsc setup.ts && node setup.js",
+    "dockersetup": "cp config.docker.json config.json && npm run setup"
   },
   "repository": {
     "type": "git",
