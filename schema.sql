@@ -8,3 +8,8 @@ CREATE TABLE IF NOT EXISTS on_verif (
     notif_channel BIGINT,
     role BIGINT
 );
+CREATE TABLE IF NOT EXISTS verified_users (
+    user_id BIGINT,
+    email VARCHAR,
+    PRIMARY KEY (user_id, email)
+)

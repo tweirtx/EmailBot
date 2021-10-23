@@ -20,10 +20,12 @@
   },
   "homepage": "https://github.com/tweirtx/EmailBot#readme",
   "dependencies": {
+    "@discordjs/rest": "^0.1.0-canary.0",
     "@types/node": "^16.10.3",
     "@types/nodemailer": "^6.4.4",
     "@types/nodemailer-direct-transport": "^1.0.32",
     "@types/nodemailer-smtp-transport": "^2.7.5",
+    "discord-api-types": "^0.24.0",
     "discord.js": "^13.2.0",
     "nodemailer": "^6.6.5",
     "ts-postgres": "^1.1.3",
