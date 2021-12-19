@@ -81,9 +81,9 @@ verify.addSubcommand(new SlashCommandSubcommandBuilder()
 
 const commands = [domaincom, onverif, lookup, verify].map(command => command.toJSON());
 
-async function sendVerifEmail(addr, randomCode) {
+async function sendVerifEmail(addr, randomCode): Promise<boolean> {
     const transporter = email.createTransport(config.email_info);
-
+    console.log(addr)
     const mailOptions = {
         from : config.email_info.auth.user,
         to : addr,
@@ -91,11 +91,13 @@ async function sendVerifEmail(addr, randomCode) {
         text: 'Your verification code is: ' + randomCode
     };
 
-    transporter.sendMail( mailOptions, (error, info) => {
+    await transporter.sendMail( mailOptions, (error, info) => {
         if (error) {
-            return console.log(`error: ${error}`);
+            console.log(`error: ${error}`);
+            return false;
         }
         console.log(`Message Sent ${info.response}`);
+        return true;
     });
 }
 
@@ -166,6 +168,26 @@ function lookupHandler(interaction): string {
     }
 }
 
+async function verifHandler(interaction): Promise<string> {
+    if (interaction.options._subcommand == "getcode") {
+        // TODO put into database
+        const email = interaction.options.getString('email');
+        console.log(email);
+        const response = await sendVerifEmail(email, "012345")
+        if (response) {
+            return "Check your email!"
+        }
+        else {
+            return "There was an error. Please try again later."
+        }
+    }
+    else if (interaction.options._subcommand == "complete") {
+        // TODO put into database, compare verification code
+        const codeResponse = interaction.options.getString('code');
+        return "Successfully verified";
+    }
+}
+
 async function main() {
     const postgres = new Client(config.postgres_info);
     await postgres.connect();
@@ -201,6 +223,10 @@ async function main() {
 
             else if (interaction.commandName === 'lookup') {
                 await interaction.reply(lookupHandler(interaction));
+            }
+
+            else if (interaction.commandName === 'verify') {
+                await interaction.reply(await verifHandler(interaction));
             }
 
             else {
