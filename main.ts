@@ -1,5 +1,6 @@
 import * as discord from 'discord.js';
 import { Client } from 'ts-postgres';
+const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandRoleOption, SlashCommandUserOption, SlashCommandSubcommandBuilder, SlashCommandChannelOption } = require('@discordjs/builders');
 import * as email from "nodemailer";
 import {Routes} from "discord-api-types/v9";
 import {Collection, OAuth2Guild, Snowflake} from "discord.js";
@@ -11,10 +12,31 @@ catch (Exception) {
     console.log("Configuration file not found. Please run npm setup to continue.");
     process.exit(1);
 }
-const commands = [{
-    name: 'domain',
-    description: 'Configures domain'
-}];
+
+let domaincom = new SlashCommandBuilder().setName('domain').setDescription('Manage allowed domains')
+domaincom.addSubcommand(new SlashCommandSubcommandBuilder().setName('add').setDescription('Adds an allowed domain')
+        .addStringOption(new SlashCommandStringOption().setName("domain").setDescription("Domain to allow").setRequired(true)))
+domaincom.addSubcommand(new SlashCommandSubcommandBuilder().setName('remove').setDescription('Remove an allowed domain')
+        .addStringOption(new SlashCommandStringOption().setName("domain").setDescription("Domain to remove").setRequired(true)))
+domaincom.addSubcommand(new SlashCommandSubcommandBuilder().setName('list').setDescription("List allowed domains for this server"))
+
+let onverif = new SlashCommandBuilder().setName("onverif").setDescription("Configures what happens when a user passes verification")
+onverif.addSubcommand(new SlashCommandSubcommandBuilder().setName('role').setDescription("Set a role to be added to verified users")
+    .addRoleOption(new SlashCommandRoleOption().setName("role").setDescription("Role to add to verified users").setRequired(true)))
+onverif.addSubcommand(new SlashCommandSubcommandBuilder().setName('logchannel').setDescription('Set a channel to log verifications to')
+    .addChannelOption(new SlashCommandChannelOption().setName("logchannel").setDescription("Where to send logs").setRequired(true)))
+
+let lookup = new SlashCommandBuilder().setName("lookup").setDescription("Looks up verified identities for a user")
+    .addUserOption(new SlashCommandUserOption().setName("user").setDescription("User to look up").setRequired(true))
+
+let verify = new SlashCommandBuilder().setName("verify").setDescription("Verify yourself")
+verify.addSubcommand(new SlashCommandSubcommandBuilder().setName("getcode")
+    .setDescription("Sends you an email at an allowed domain with a verification code")
+    .addStringOption(new SlashCommandStringOption().setName("email").setDescription("Email to send verification code to").setRequired(true)))
+verify.addSubcommand(new SlashCommandSubcommandBuilder().setName("complete").setDescription("Complete verification by entering your code")
+    .addStringOption(new SlashCommandStringOption().setName("code").setDescription("Verification code").setRequired(true)))
+
+const commands = [domaincom, onverif, lookup, verify].map(command => command.toJSON());
 
 async function sendVerifEmail(addr, randomCode) {
     var transporter = email.createTransport(config.email_info);
@@ -44,16 +66,15 @@ function refreshSlash(clientObject) {
         try {
             console.log('Started refreshing application (/) commands.');
             const guilds: Collection<Snowflake, OAuth2Guild> = await clientObject.guilds.fetch();
-            console.log(guilds.keys());
 
-            for (let guild in guilds.keys()) {
+            guilds.forEach(async guild => {
                 console.log("Updating commands in "+ guild);
                 await rest.put(
-                    Routes.applicationGuildCommands(clientObject.user.id, guild),
+                    Routes.applicationGuildCommands(clientObject.user.id, guild.id),
                     { body: commands }
                 );
                 console.log("Updated commands in " + guild);
-            }
+            })
             console.log('Successfully reloaded application (/) commands.');
         } catch (error) {
             console.error(error);
