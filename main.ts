@@ -4,6 +4,7 @@ const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandRoleOption, S
 import * as email from "nodemailer";
 import {Routes} from "discord-api-types/v9";
 import {Collection, OAuth2Guild, Snowflake} from "discord.js";
+const { REST } = require('@discordjs/rest');
 let config;
 try {
     config = require("./config.json");
@@ -81,9 +82,9 @@ verify.addSubcommand(new SlashCommandSubcommandBuilder()
 const commands = [domaincom, onverif, lookup, verify].map(command => command.toJSON());
 
 async function sendVerifEmail(addr, randomCode) {
-    var transporter = email.createTransport(config.email_info);
+    const transporter = email.createTransport(config.email_info);
 
-    var mailOptions = {
+    const mailOptions = {
         from : config.email_info.auth.user,
         to : addr,
         subject : 'Verification Code',
@@ -99,8 +100,6 @@ async function sendVerifEmail(addr, randomCode) {
 }
 
 function refreshSlash(clientObject) {
-    const { REST } = require('@discordjs/rest');
-    const { Routes } = require('discord-api-types/v9');
 
     const rest = new REST({ version: '9' }).setToken(config.token);
 
@@ -125,6 +124,21 @@ function refreshSlash(clientObject) {
 }
 
 function domain(interaction): string {
+    if (interaction.options._subcommand == "add") {
+        // TODO put into database
+        const interactDomain = interaction.options.getString('domain');
+        return "Added " +  interactDomain;
+    }
+    else if (interaction.options._subcommand == "remove") {
+        // TODO put into database
+        const interactDomain = interaction.options.getString('domain');
+        return "Deleted " +  interactDomain;
+    }
+    if (interaction.options._subcommand == "list") {
+        // TODO put into database
+        const domains = []
+        return "Allowed domains for server: " + domains;
+    }
     return "test";
 }
 
