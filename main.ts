@@ -83,7 +83,6 @@ const commands = [domaincom, onverif, lookup, verify].map(command => command.toJ
 
 async function sendVerifEmail(addr, randomCode): Promise<boolean> {
     const transporter = email.createTransport(config.email_info);
-    console.log(addr)
     const mailOptions = {
         from : config.email_info.auth.user,
         to : addr,
@@ -91,14 +90,15 @@ async function sendVerifEmail(addr, randomCode): Promise<boolean> {
         text: 'Your verification code is: ' + randomCode
     };
 
-    await transporter.sendMail( mailOptions, (error, info) => {
-        if (error) {
-            console.log(`error: ${error}`);
-            return false;
-        }
-        console.log(`Message Sent ${info.response}`);
+    try {
+        await transporter.sendMail(mailOptions);
         return true;
-    });
+    }
+    catch (e) {
+        console.log(e)
+        return false;
+    }
+
 }
 
 function refreshSlash(clientObject) {
@@ -172,7 +172,6 @@ async function verifHandler(interaction): Promise<string> {
     if (interaction.options._subcommand == "getcode") {
         // TODO put into database
         const email = interaction.options.getString('email');
-        console.log(email);
         const response = await sendVerifEmail(email, "012345")
         if (response) {
             return "Check your email!"
