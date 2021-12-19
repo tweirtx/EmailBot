@@ -154,6 +154,18 @@ function onVerifHandler(interaction): string {
     }
 }
 
+function lookupHandler(interaction): string {
+    // TODO search database
+    const user = interaction.options.getUser('user');
+    const results = ["asdf@asdf.asdf"];
+    if (results.length == 0) {
+        return "No results found for " + user.toString();
+    }
+    else {
+        return results.toString();
+    }
+}
+
 async function main() {
     const postgres = new Client(config.postgres_info);
     await postgres.connect();
@@ -186,6 +198,11 @@ async function main() {
             else if (interaction.commandName === 'onverif') {
                 await interaction.reply(onVerifHandler(interaction));
             }
+
+            else if (interaction.commandName === 'lookup') {
+                await interaction.reply(lookupHandler(interaction));
+            }
+
             else {
                 await interaction.reply("Command not implemented!");
             }
