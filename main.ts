@@ -135,11 +135,23 @@ function domain(interaction): string {
         return "Deleted " +  interactDomain;
     }
     if (interaction.options._subcommand == "list") {
-        // TODO put into database
+        // TODO search database
         const domains = []
         return "Allowed domains for server: " + domains;
     }
-    return "test";
+}
+
+function onVerifHandler(interaction): string {
+    if (interaction.options._subcommand == "role") {
+        // TODO put into database
+        const role = interaction.options.getRole('role');
+        return "Successfully set verified role to " + role.name;
+    }
+    else if (interaction.options._subcommand == "logchannel") {
+        // TODO put into database
+        const channel = interaction.options.getChannel('logchannel');
+        return "Successfully set log channel to " + channel.toString();
+    }
 }
 
 async function main() {
@@ -169,6 +181,13 @@ async function main() {
 
             if (interaction.commandName === 'domain') {
                 await interaction.reply(domain(interaction));
+            }
+
+            else if (interaction.commandName === 'onverif') {
+                await interaction.reply(onVerifHandler(interaction));
+            }
+            else {
+                await interaction.reply("Command not implemented!");
             }
         });
 
