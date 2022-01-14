@@ -1,11 +1,14 @@
 import * as discord from 'discord.js';
-import { Client } from 'ts-postgres';
-const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandRoleOption, SlashCommandUserOption, SlashCommandSubcommandBuilder, SlashCommandChannelOption } = require('@discordjs/builders');
+import {Collection, OAuth2Guild, Snowflake} from 'discord.js';
+import {Client, DataType} from 'ts-postgres';
 import * as email from "nodemailer";
 import {Routes} from "discord-api-types/v9";
-import {Collection, OAuth2Guild, Snowflake} from "discord.js";
+import {randomInt} from "crypto";
+
+const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandRoleOption, SlashCommandUserOption, SlashCommandSubcommandBuilder, SlashCommandChannelOption } = require('@discordjs/builders');
 const { REST } = require('@discordjs/rest');
 let config;
+let postgres;
 try {
     config = require("./config.json");
 }
@@ -127,8 +130,10 @@ function refreshSlash(clientObject) {
 
 function domain(interaction): string {
     if (interaction.options._subcommand == "add") {
-        // TODO put into database
         const interactDomain = interaction.options.getString('domain');
+        postgres.query("INSERT INTO allowed_domains (domain, guild_id) VALUES ($1, $2)",
+            [interactDomain, interaction.guild.id],
+            [DataType.Varchar, DataType.Varchar])
         return "Added " +  interactDomain;
     }
     else if (interaction.options._subcommand == "remove") {
@@ -136,7 +141,7 @@ function domain(interaction): string {
         const interactDomain = interaction.options.getString('domain');
         return "Deleted " +  interactDomain;
     }
-    if (interaction.options._subcommand == "list") {
+    else if (interaction.options._subcommand == "list") {
         // TODO search database
         const domains = []
         return "Allowed domains for server: " + domains;
@@ -145,13 +150,18 @@ function domain(interaction): string {
 
 function onVerifHandler(interaction): string {
     if (interaction.options._subcommand == "role") {
-        // TODO put into database
         const role = interaction.options.getRole('role');
+        postgres.query("INSERT INTO on_verif (guild_id, role) VALUES ($1, $2) ON CONFLICT (guild_id) DO UPDATE SET role = EXCLUDED.role",
+            [interaction.guild.id, role.id],
+            [DataType.Varchar, DataType.Varchar])
         return "Successfully set verified role to " + role.name;
     }
     else if (interaction.options._subcommand == "logchannel") {
         // TODO put into database
         const channel = interaction.options.getChannel('logchannel');
+        postgres.query("INSERT INTO on_verif (guild_id, notif_channel) VALUES ($1, $2) ON CONFLICT (guild_id) DO UPDATE SET notif_channel = EXCLUDED.notif_channel",
+            [interaction.guild.id, channel.id],
+            [DataType.Varchar, DataType.Varchar])
         return "Successfully set log channel to " + channel.toString();
     }
 }
@@ -168,11 +178,21 @@ function lookupHandler(interaction): string {
     }
 }
 
+function randomizer(): string {
+    let output = "";
+    let times = 6
+    for(let i = 0; i < times; i++){
+        output += randomInt(0,9);
+    }
+    return output;
+}
+
 async function verifHandler(interaction): Promise<string> {
     if (interaction.options._subcommand == "getcode") {
         // TODO put into database
         const email = interaction.options.getString('email');
-        const response = await sendVerifEmail(email, "012345")
+        const random = randomizer();
+        const response = await sendVerifEmail(email, random)
         if (response) {
             return "Check your email!"
         }
@@ -188,7 +208,7 @@ async function verifHandler(interaction): Promise<string> {
 }
 
 async function main() {
-    const postgres = new Client(config.postgres_info);
+    postgres = new Client(config.postgres_info);
     await postgres.connect();
     const discordClient = new discord.Client({intents: [discord.Intents.FLAGS.GUILDS]});
     try {
@@ -235,7 +255,7 @@ async function main() {
 
         await discordClient.login(config.token);
     } finally {
-        await postgres.end();
+        console.log("Finally");
     }
 }
 
