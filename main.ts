@@ -128,23 +128,30 @@ function refreshSlash(clientObject) {
     })();
 }
 
-function domain(interaction): string {
+async function domain(interaction): Promise<string> {
     if (interaction.options._subcommand == "add") {
         const interactDomain = interaction.options.getString('domain');
         postgres.query("INSERT INTO allowed_domains (domain, guild_id) VALUES ($1, $2)",
             [interactDomain, interaction.guild.id],
             [DataType.Varchar, DataType.Varchar])
-        return "Added " +  interactDomain;
-    }
-    else if (interaction.options._subcommand == "remove") {
-        // TODO put into database
+        return "Added " + interactDomain;
+    } else if (interaction.options._subcommand == "remove") {
         const interactDomain = interaction.options.getString('domain');
-        return "Deleted " +  interactDomain;
-    }
-    else if (interaction.options._subcommand == "list") {
-        // TODO search database
-        const domains = []
-        return "Allowed domains for server: " + domains;
+        postgres.query("DELETE FROM allowed_domains WHERE guild_id = $1 AND domain = $2;",
+            [interaction.guild.id, interactDomain]);
+        return "Removed " + interactDomain + " from allowed domains";
+    } else if (interaction.options._subcommand == "list") {
+        const resultIterator = postgres.query(
+            `SELECT * FROM allowed_domains WHERE guild_id = $1`,
+            [interaction.guild.id]
+        );
+        let domains = [];
+
+        for await (const row of resultIterator) {
+            domains.push(row.get('domain'));
+        }
+        const domainsAsStr = domains.join(", ");
+        return "Allowed domains for server: " + domainsAsStr;
     }
 }
 
@@ -157,7 +164,6 @@ function onVerifHandler(interaction): string {
         return "Successfully set verified role to " + role.name;
     }
     else if (interaction.options._subcommand == "logchannel") {
-        // TODO put into database
         const channel = interaction.options.getChannel('logchannel');
         postgres.query("INSERT INTO on_verif (guild_id, notif_channel) VALUES ($1, $2) ON CONFLICT (guild_id) DO UPDATE SET notif_channel = EXCLUDED.notif_channel",
             [interaction.guild.id, channel.id],
@@ -212,17 +218,6 @@ async function main() {
     await postgres.connect();
     const discordClient = new discord.Client({intents: [discord.Intents.FLAGS.GUILDS]});
     try {
-        // Querying the client returns a query result promise
-        // which is also an asynchronous result iterator.
-        const resultIterator = postgres.query(
-            `SELECT 'Hello ' || $1 || '!' AS message`,
-            ['world']
-        );
-
-        for await (const row of resultIterator) {
-            // 'Hello world!'
-            console.log(row.get('message'));
-        }
 
         discordClient.once('ready', () => {
             console.log('Ready!');
@@ -233,7 +228,7 @@ async function main() {
             if (!interaction.isCommand()) return;
 
             if (interaction.commandName === 'domain') {
-                await interaction.reply(domain(interaction));
+                await interaction.reply(await domain(interaction));
             }
 
             else if (interaction.commandName === 'onverif') {
