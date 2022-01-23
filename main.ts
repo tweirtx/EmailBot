@@ -173,7 +173,6 @@ function onVerifHandler(interaction): string {
 }
 
 async function lookupHandler(interaction): Promise<string> {
-    // TODO search database
     const user = interaction.options.getUser('user');
     const userLookup = postgres.query(
         `SELECT *
