@@ -172,14 +172,36 @@ function onVerifHandler(interaction): string {
     }
 }
 
-function lookupHandler(interaction): string {
+async function lookupHandler(interaction): Promise<string> {
     // TODO search database
     const user = interaction.options.getUser('user');
-    const results = ["asdf@asdf.asdf"];
+    const userLookup = postgres.query(
+        `SELECT *
+         FROM verified_users
+         WHERE user_id = $1`,
+        [user.id]
+    );
+    const domainLookup = postgres.query(
+        `SELECT *
+         FROM allowed_domains
+         WHERE guild_id = $1`,
+        [interaction.guild.id]
+    );
+    let results = [];
+    let allowedDomains = [];
+    for await (const row of domainLookup) {
+        allowedDomains.push(row.get('domain'));
+    }
+    for await (const row of userLookup) {
+        const emailDomain = row.get('email').split('@')[1];
+        if (allowedDomains.includes(emailDomain)) {
+            results.push(row.get('email'));
+        }
+    }
+
     if (results.length == 0) {
         return "No results found for " + user.toString();
-    }
-    else {
+    } else {
         return results.toString();
     }
 }
@@ -236,7 +258,7 @@ async function main() {
             }
 
             else if (interaction.commandName === 'lookup') {
-                await interaction.reply(lookupHandler(interaction));
+                await interaction.reply(await lookupHandler(interaction));
             }
 
             else if (interaction.commandName === 'verify') {
