@@ -219,8 +219,29 @@ async function verifHandler(interaction): Promise<string> {
         // TODO put into database
         const email = interaction.options.getString('email');
         const random = randomizer();
+        const domainLookup = await postgres.query(
+            `SELECT domain
+         FROM allowed_domains
+         WHERE guild_id = $1`,
+            [interaction.guild.id]
+        );
+        const inputDomain = email.split("@")[1];
+        let foundMatch = false;
+        console.log(await domainLookup)
+        for await (let domCompare of domainLookup) {
+            if (inputDomain == domCompare.get("domain")) {
+                foundMatch = true;
+                break
+            }
+        }
+        if (!foundMatch) {
+            return "This domain is not allowed for the requested server."
+        }
         const response = await sendVerifEmail(email, random)
         if (response) {
+            postgres.query("INSERT INTO verif_code (user_id, code, email_address) VALUES ($1, $2, $3)",
+                [interaction.user.id, random, email],
+                [DataType.Varchar, DataType.Varchar, DataType.Varchar])
             return "Check your email!"
         }
         else {
@@ -228,8 +249,42 @@ async function verifHandler(interaction): Promise<string> {
         }
     }
     else if (interaction.options._subcommand == "complete") {
-        // TODO put into database, compare verification code
         const codeResponse = interaction.options.getString('code');
+        const codeLookup = await postgres.query(
+            `SELECT *
+         FROM verif_code
+         WHERE user_id = $1 AND code = $2`,
+            [interaction.user.id, codeResponse]
+        );
+        let foundCode = false;
+        let address;
+        for await (let response of codeLookup) {
+            foundCode = true;
+            address = response.get("email_address")
+        }
+        if (!foundCode) {
+            return "Invalid code entered. Please try again."
+        }
+        const domainLookup = postgres.query(
+            `SELECT *
+         FROM allowed_domains
+         WHERE guild_id = $1`,
+            [interaction.guild.id]
+        );
+        const inputDomain = address.split("@")[1];
+        let foundMatch = false;
+        for await (let domCompare of domainLookup) {
+            if (inputDomain == domCompare.get("domain")) {
+                foundMatch = true;
+                break
+            }
+        }
+        if (!foundMatch) {
+            return "This domain is not allowed for this server!"
+        }
+        postgres.query("INSERT INTO verified_users (user_id, email) VALUES ($1, $2)",
+            [interaction.user.id, address],
+            [DataType.Varchar, DataType.Varchar])
         return "Successfully verified";
     }
 }
@@ -242,7 +297,7 @@ async function main() {
 
         discordClient.once('ready', () => {
             console.log('Ready!');
-            refreshSlash(discordClient);
+            //refreshSlash(discordClient);
         });
 
         discordClient.on('interactionCreate', async interaction => {

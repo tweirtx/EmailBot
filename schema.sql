@@ -15,5 +15,6 @@ CREATE TABLE IF NOT EXISTS verified_users (
 );
 CREATE TABLE IF NOT EXISTS verif_code (
     user_id VARCHAR PRIMARY KEY,
-    code VARCHAR
+    code VARCHAR,
+    email_address VARCHAR
 );
