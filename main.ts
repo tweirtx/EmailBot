@@ -9,6 +9,7 @@ const { SlashCommandBuilder, SlashCommandStringOption, SlashCommandRoleOption, S
 const { REST } = require('@discordjs/rest');
 let config;
 let postgres;
+let discordClient;
 try {
     config = require("./config.json");
 }
@@ -249,7 +250,25 @@ async function runVerif(userID, guildID, address): Promise<boolean> {
         }
     }
     if (foundMatch) {
-        // TODO apply roles and send appropriate notification channel message
+        const actionLookup = postgres.query(
+            `SELECT *
+         FROM on_verif
+         WHERE guild_id = $1`,
+            [guildID]
+        );
+        for await (let response of actionLookup) {
+            const channel = response.get("notif_channel")
+            const role = response.get("role")
+            const guildObject = await discordClient.guilds.fetch(guildID);
+            const member = await guildObject.members.fetch(userID);
+            if (typeof channel == "string") {
+                const channelObject = await discordClient.channels.fetch(channel);
+                await channelObject.send(member.displayName + " has verified with address " + address);
+            }
+            if (typeof role == "string") {
+                member.roles.add(role);
+            }
+        }
     }
     return foundMatch;
 }
@@ -310,6 +329,7 @@ async function verifHandler(interaction): Promise<string> {
         postgres.query("INSERT INTO verified_users (user_id, email) VALUES ($1, $2)",
             [interaction.user.id, address],
             [DataType.Varchar, DataType.Varchar])
+        postgres.query("DELETE FROM verif_code WHERE user_id = $1", [interaction.user.id]);
         return "Successfully verified";
     }
 }
@@ -317,7 +337,7 @@ async function verifHandler(interaction): Promise<string> {
 async function main() {
     postgres = new Client(config.postgres_info);
     await postgres.connect();
-    const discordClient = new discord.Client({intents: [discord.Intents.FLAGS.GUILDS]});
+    discordClient = new discord.Client({intents: [discord.Intents.FLAGS.GUILDS, discord.Intents.FLAGS.GUILD_MEMBERS]});
     try {
 
         discordClient.once('ready', () => {
@@ -349,9 +369,27 @@ async function main() {
 
         });
 
+        discordClient.on("guildCreate", async guild => {
+            refreshSlash(discordClient);
+        });
+
+        discordClient.on("guildMemberAdd", async member => {
+            const userLookup = await postgres.query(
+                `SELECT *
+                FROM verified_users
+                WHERE user_id = $1`,
+                [member.id]
+            );
+            let address;
+            for await (let response of userLookup) {
+                address = response.get("email")
+                await runVerif(member.id, member.guild.id, address)
+            }
+        });
+
         await discordClient.login(config.token);
     } finally {
-        console.log("Finally");
+
     }
 }
 
