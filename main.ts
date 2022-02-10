@@ -84,6 +84,24 @@ verify.addSubcommand(new SlashCommandSubcommandBuilder()
 
 const commands = [domaincom, onverif, lookup, verify].map(command => command.toJSON());
 
+async function requirePerms(interaction, admin: boolean): Promise<boolean> {
+    const perms = interaction.memberPermissions;
+    let hasThem;
+    if (admin) {
+        hasThem = perms.has("ADMINISTRATOR");
+        if (!hasThem) {
+            interaction.reply("You must be an administrator to run this command!")
+        }
+    }
+    else {
+        hasThem = perms.has("MODERATE_MEMBERS");
+        if (!hasThem) {
+            interaction.reply("The moderate members permission is required to run this command.")
+        }
+    }
+    return hasThem;
+}
+
 async function sendVerifEmail(addr, randomCode): Promise<boolean> {
     const transporter = email.createTransport(config.email_info);
     const mailOptions = {
@@ -129,13 +147,13 @@ function refreshSlash(clientObject) {
 }
 
 async function domain(interaction): Promise<string> {
-    if (interaction.options._subcommand == "add") {
+    if (interaction.options._subcommand == "add" && await requirePerms(interaction, true)) {
         const interactDomain = interaction.options.getString('domain');
         postgres.query("INSERT INTO allowed_domains (domain, guild_id) VALUES ($1, $2)",
             [interactDomain, interaction.guild.id],
             [DataType.Varchar, DataType.Varchar])
         return "Added " + interactDomain;
-    } else if (interaction.options._subcommand == "remove") {
+    } else if (interaction.options._subcommand == "remove" && await requirePerms(interaction, true)) {
         const interactDomain = interaction.options.getString('domain');
         postgres.query("DELETE FROM allowed_domains WHERE guild_id = $1 AND domain = $2;",
             [interaction.guild.id, interactDomain]);
@@ -153,6 +171,7 @@ async function domain(interaction): Promise<string> {
         const domainsAsStr = domains.join(", ");
         return "Allowed domains for server: " + domainsAsStr;
     }
+
 }
 
 function onVerifHandler(interaction): string {
@@ -214,9 +233,29 @@ function randomizer(): string {
     return output;
 }
 
+async function runVerif(userID, guildID, address): Promise<boolean> {
+    const domainLookup = postgres.query(
+        `SELECT *
+         FROM allowed_domains
+         WHERE guild_id = $1`,
+        [guildID]
+    );
+    const inputDomain = address.split("@")[1];
+    let foundMatch = false;
+    for await (let domCompare of domainLookup) {
+        if (inputDomain == domCompare.get("domain")) {
+            foundMatch = true;
+            break
+        }
+    }
+    if (foundMatch) {
+        // TODO apply roles and send appropriate notification channel message
+    }
+    return foundMatch;
+}
+
 async function verifHandler(interaction): Promise<string> {
     if (interaction.options._subcommand == "getcode") {
-        // TODO put into database
         const email = interaction.options.getString('email');
         const random = randomizer();
         const domainLookup = await postgres.query(
@@ -227,7 +266,6 @@ async function verifHandler(interaction): Promise<string> {
         );
         const inputDomain = email.split("@")[1];
         let foundMatch = false;
-        console.log(await domainLookup)
         for await (let domCompare of domainLookup) {
             if (inputDomain == domCompare.get("domain")) {
                 foundMatch = true;
@@ -265,20 +303,7 @@ async function verifHandler(interaction): Promise<string> {
         if (!foundCode) {
             return "Invalid code entered. Please try again."
         }
-        const domainLookup = postgres.query(
-            `SELECT *
-         FROM allowed_domains
-         WHERE guild_id = $1`,
-            [interaction.guild.id]
-        );
-        const inputDomain = address.split("@")[1];
-        let foundMatch = false;
-        for await (let domCompare of domainLookup) {
-            if (inputDomain == domCompare.get("domain")) {
-                foundMatch = true;
-                break
-            }
-        }
+        const foundMatch = await runVerif(interaction.user.id, interaction.guild.id, address);
         if (!foundMatch) {
             return "This domain is not allowed for this server!"
         }
@@ -304,24 +329,24 @@ async function main() {
             if (!interaction.isCommand()) return;
 
             if (interaction.commandName === 'domain') {
-                await interaction.reply(await domain(interaction));
+                const reply = await domain(interaction);
+                if (typeof reply == "string") {
+                    await interaction.reply(reply);
+                }
             }
 
-            else if (interaction.commandName === 'onverif') {
+            else if (interaction.commandName === 'onverif' && await requirePerms(interaction, true)) {
                 await interaction.reply(onVerifHandler(interaction));
             }
 
-            else if (interaction.commandName === 'lookup') {
-                await interaction.reply(await lookupHandler(interaction));
+            else if (interaction.commandName === 'lookup' && await requirePerms(interaction, false)) {
+                await interaction.reply({content: await lookupHandler(interaction), ephemeral: true});
             }
 
             else if (interaction.commandName === 'verify') {
-                await interaction.reply(await verifHandler(interaction));
+                await interaction.reply({content: await verifHandler(interaction), ephemeral: true});
             }
 
-            else {
-                await interaction.reply("Command not implemented!");
-            }
         });
 
         await discordClient.login(config.token);
